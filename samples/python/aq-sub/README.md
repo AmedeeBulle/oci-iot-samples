@@ -8,7 +8,7 @@ You should already be familiar with connecting to the IoT Platform database.
 If not, review the [Direct database connection example](../query-db/README.md)
 in this repository.
 
-The provided script allows you to subscribe to the raw messages stream.
+The provided scripts allows you to subscribe to the raw and normalized message streams.
 
 ## Concepts
 
@@ -24,15 +24,28 @@ The following queues are available:
 | normalized_data  | JSON                  | Normalized data                  |
 | rejected_data_in | rejected_data_in_type | Rejected incoming messages       |
 
-(See
-[documentation](https://docs.oracle.com/en-us/iaas/Content/internet-of-things/iot-domain-database-schema.htm#queues__rejected-data-queues)
-for detailed data type descriptions.)
+(See the
+[Transactional Event Queues](https://docs.oracle.com/en-us/iaas/Content/internet-of-things/iot-domain-database-schema.htm#queues)
+section of the IoT Platform documentation for detailed data type descriptions.)
 
-This sample script acts as a "non durable subscriber": it will  only receive messages
-published while active and connected.
-To retrieve messages published while disconnected, you should create a subscriber in a
-separate process.
-Keep in mind that the queues retention is set to 24 hours.
+Queue subscribers can be implemented a durable or non-durable:
+
+- Durable subscribers: messages are kept in the queue until a client connects and read
+  the messages.
+  Note that the retention for IoT Platform queues is set to 24 hours.
+- Non-durable subscribers: only returns the messages received while the client is
+  connected.
+  The Python SDK does not support non-durable subscribers as such, but this can be
+  emulated by registering an ephemeral subscriber when a client connects.
+
+Two sample scrips are provided:
+
+- `aq-sub`: stream all incoming raw data (ADT -- Abstract Data Type). It is implement
+  as a non-durable subscriber.
+- `stream-normalized`: stream the normalized data (JSON), using a durable subscriber.
+
+More information on the Python SDK is available on
+[Using Oracle Transactional Event Queues and Advanced Queuing](https://python-oracledb.readthedocs.io/en/stable/user_guide/aq.html)
 
 ## Prerequisites
 
@@ -63,7 +76,7 @@ Copy `config.distr.py` to `config.py` and set the following variables:
 Run the script. Without parameter, it will show all messages.
 You can filter by Digital Twin Instance OCID, display name, or endpoint (MQTT topic).
 
-```sh
+```text
 $ ./aq-sub.py --help
 usage: aq-sub.py [-h] [--id ID | --display-name DISPLAY_NAME] [--endpoint ENDPOINT]
 
@@ -75,4 +88,26 @@ options:
   --display-name DISPLAY_NAME
                         The Digital Twin Instance display name (mutually exclusive with --id).
   --endpoint ENDPOINT   The message endpoint (topic).
+```
+
+The `stream-normalized` script is similar, but provides additional commands to manage
+the durable subscription:
+
+```text
+$ ./stream-normalized --help
+Usage: stream-normalized [OPTIONS] COMMAND [ARGS]...
+
+  Stream Digital Twin normalized data.
+
+  This example illustrate the use of "durable subscribers": once the
+  subscriber has been created, messages are retained and returned when the
+  client connects.
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  stream       Stream data.
+  subscribe    Subscribe to the normalized queue.
+  unsubscribe  Unsubscribe to the normalized queue.
 ```
