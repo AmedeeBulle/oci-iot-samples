@@ -12,15 +12,17 @@ Simple client to stream Normalized Messages received by the IoT Platform.
 This example focus on the usage of the Queues; for more information on
 database connection, see the "Query DB" example.
 """
+import logging
 import re
-import sys
-import traceback
 from typing import Optional
 
 import click
 import config
 import oracledb
 import oracledb.plugins.oci_tokens
+
+LOGGER_FMT = "{asctime} - {levelname:8} - {filename:16.16} - {message}"
+logger = logging.getLogger(__name__)
 
 
 def db_connect() -> oracledb.Connection:
@@ -55,15 +57,17 @@ def db_connect() -> oracledb.Connection:
 
     extra_connect_params = {}
     if config.thick_mode:
-        print("Using oracledb Thick mode")
+        logger.debug("Connecting using oracledb Thick mode")
         oracledb.init_oracle_client(lib_dir=config.lib_dir, config_dir=".")
         extra_connect_params["externalauth"] = True
     else:
-        print("Using oracledb Thin mode")
+        logger.debug("Connecting using oracledb Thin mode")
 
-    return oracledb.connect(
+    connection = oracledb.connect(
         dsn=dsn, extra_auth_params=token_based_auth, **extra_connect_params
     )
+    logger.info("Connected")
+    return connection
 
 
 def db_disconnect(connection: oracledb.Connection) -> None:
@@ -112,6 +116,7 @@ def build_subscriber_rule(
             )
             condition = f'tab.user_data."contentPath" = {quoted_content_path}'
             rule = f"{rule} and {condition}" if rule is not None else condition
+    logger.debug("Queue rule is: %s", rule)
     return rule
 
 
@@ -125,8 +130,10 @@ class CLIContext:
 
 
 @click.group()
+@click.option("-v", "--verbose", is_flag=True, help="Verbose mode")
+@click.option("-d", "--debug", is_flag=True, help="Debug mode")
 @click.pass_context
-def cli(ctx: click.Context) -> None:
+def cli(ctx: click.Context, verbose: bool, debug: bool) -> None:
     """Stream Digital Twin normalized data.
 
     This example illustrate the use of "durable subscribers": once the
@@ -134,18 +141,30 @@ def cli(ctx: click.Context) -> None:
     client connects.
     """
     ctx.ensure_object(CLIContext)
+    log_level = logging.WARNING
+    if verbose:
+        log_level = logging.INFO
+    if debug:
+        log_level = logging.DEBUG
+        # Silence third party libraries
+        logging.getLogger("oci._vendor.urllib3.connectionpool").setLevel(logging.INFO)
+        logging.getLogger("oci.circuit_breaker").setLevel(logging.INFO)
+        logging.getLogger("oci.config").setLevel(logging.INFO)
+        logging.getLogger("oci.util").setLevel(logging.INFO)
+    logging.basicConfig(level=log_level, format=LOGGER_FMT, style="{")
 
 
 @cli.result_callback()
 @click.pass_context
 def after_command(ctx: click.Context, *args, **kwargs) -> None:
     """Ensure DB disconnect after command runs."""
-    print("Cleanup")
+    logger.debug("Cleanup")
     if hasattr(ctx.obj, "connection") and ctx.obj.connection:
         try:
             db_disconnect(ctx.obj.connection)
+            logger.info("Disconnected")
         except Exception as e:
-            print(f"Warning: Failed to disconnect DB: {e}", file=sys.stderr)
+            logger.warning("Failed to disconnect: %s", e)
 
 
 @cli.command()
@@ -184,9 +203,8 @@ def subscribe(
 
     try:
         ctx.obj.connection = db_connect()
-    except Exception as err:
-        print(f"Database connection failed: {err}", file=sys.stderr)
-        traceback.print_exc()
+    except Exception as e:
+        logger.error("Database connection failed: %s", e)
         return
 
     try:
@@ -196,9 +214,8 @@ def subscribe(
             display_name=display_name,
             content_path=content_path,
         )
-    except Exception as err:
-        print(f"Exception occurred while building rule: {err}", file=sys.stderr)
-        traceback.print_exc()
+    except Exception as e:
+        logger.error("Exception occurred while building rule: %s", e)
         return
 
     try:
@@ -219,12 +236,10 @@ def subscribe(
                     "delivery_mode": oracledb.MSG_PERSISTENT_OR_BUFFERED,
                 },
             )
-    except Exception as err:
-        print(
-            f"Exception occurred while registering subscriber: {err}", file=sys.stderr
-        )
-        traceback.print_exc()
+    except Exception as e:
+        logger.error("Cannot register subscriber: %s", e)
         return
+    logger.info("Subscriber %s registered", config.subscriber_name)
 
 
 @cli.command()
@@ -233,38 +248,33 @@ def stream(ctx: click.Context) -> None:
     """Stream data."""
     try:
         ctx.obj.connection = db_connect()
-    except Exception as err:
-        print(f"Database connection failed: {err}", file=sys.stderr)
-        traceback.print_exc()
+    except Exception as e:
+        logger.error("Database connection failed: %s", e)
+        return
 
-    if ctx.obj.connection:
-        try:
-            queue = ctx.obj.connection.queue(
-                name=ctx.obj.queue_name, payload_type="JSON"
-            )
-            queue.deqOptions.mode = oracledb.DEQ_REMOVE
-            queue.deqOptions.wait = 10
-            queue.deqOptions.navigation = oracledb.DEQ_FIRST_MSG
-            queue.deqOptions.consumername = config.subscriber_name
+    try:
+        queue = ctx.obj.connection.queue(name=ctx.obj.queue_name, payload_type="JSON")
+        queue.deqOptions.mode = oracledb.DEQ_REMOVE
+        queue.deqOptions.wait = 10
+        queue.deqOptions.navigation = oracledb.DEQ_FIRST_MSG
+        queue.deqOptions.consumername = config.subscriber_name
 
-            print("Listening for messages")
-            while True:
-                message: Optional[oracledb.aq.MessageProperties] = queue.deqone()
-                if message:
-                    print(
-                        f"\nOCID         : {message.payload['digitalTwinInstanceId']}"
-                    )
-                    print(f"Time observed: {message.payload['timeObserved']}")
-                    print(f"Content path : {message.payload['contentPath']}")
-                    print(f"Value        : {message.payload['value']}")
-                    ctx.obj.connection.commit()
-                else:
-                    print(".", end="", flush=True)
-        except KeyboardInterrupt:
-            print("\nInterrupted")
-        except Exception as e:
-            print(f"\n--- An unexpected error occurred: {e} ---")
-            traceback.print_exc()
+        logger.info("Listening for messages")
+        while True:
+            message: Optional[oracledb.aq.MessageProperties] = queue.deqone()
+            if message:
+                print(f"\nOCID         : {message.payload['digitalTwinInstanceId']}")
+                print(f"Time observed: {message.payload['timeObserved']}")
+                print(f"Content path : {message.payload['contentPath']}")
+                print(f"Value        : {message.payload['value']}")
+                ctx.obj.connection.commit()
+            else:
+                print(".", end="", flush=True)
+    except KeyboardInterrupt:
+        print("\nInterrupted")
+    except Exception as e:
+        print()
+        logger.error("Error while dequeuing messages: %s", e)
 
 
 @cli.command()
@@ -273,31 +283,28 @@ def unsubscribe(ctx: click.Context) -> None:
     """Unsubscribe to the normalized queue."""
     try:
         ctx.obj.connection = db_connect()
-    except Exception as err:
-        print(f"Database connection failed: {err}", file=sys.stderr)
-        traceback.print_exc()
+    except Exception as e:
+        logger.error("Database connection failed: %s", e)
+        return
 
-    if ctx.obj.connection:
-        try:
-            agent_type = ctx.obj.connection.gettype("SYS.AQ$_AGENT")
-            subscriber = agent_type.newobject()
-            subscriber.NAME = config.subscriber_name
-            subscriber.ADDRESS = None
-            subscriber.PROTOCOL = 0
-            with ctx.obj.connection.cursor() as cursor:
-                cursor.callproc(
-                    "dbms_aqadm.remove_subscriber",
-                    keyword_parameters={
-                        "queue_name": ctx.obj.queue_name,
-                        "subscriber": subscriber,
-                    },
-                )
-        except Exception as err:
-            print(
-                f"Exception occurred while unregistering subscriber: {err}",
-                file=sys.stderr,
+    try:
+        agent_type = ctx.obj.connection.gettype("SYS.AQ$_AGENT")
+        subscriber = agent_type.newobject()
+        subscriber.NAME = config.subscriber_name
+        subscriber.ADDRESS = None
+        subscriber.PROTOCOL = 0
+        with ctx.obj.connection.cursor() as cursor:
+            cursor.callproc(
+                "dbms_aqadm.remove_subscriber",
+                keyword_parameters={
+                    "queue_name": ctx.obj.queue_name,
+                    "subscriber": subscriber,
+                },
             )
-            traceback.print_exc()
+    except Exception as e:
+        logger.error("Cannot unregister subscriber: %s", e)
+        return
+    logger.info("Subscriber %s unregistered", config.subscriber_name)
 
 
 if __name__ == "__main__":

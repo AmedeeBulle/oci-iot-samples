@@ -13,15 +13,17 @@ This example focus on the usage of the Queues; for more information on
 database connection, see the "Query DB" example.
 """
 import argparse
+import logging
 import re
-import sys
-import traceback
 from typing import Optional
 import uuid
 
 import config
 import oracledb
 import oracledb.plugins.oci_tokens
+
+LOGGER_FMT = "{asctime} - {levelname:8} - {filename:16.16} - {message}"
+logger = logging.getLogger(__name__)
 
 
 def db_connect() -> oracledb.Connection:
@@ -56,15 +58,17 @@ def db_connect() -> oracledb.Connection:
 
     extra_connect_params = {}
     if config.thick_mode:
-        print("Using oracledb Thick mode")
+        logger.debug("Connecting using oracledb Thick mode")
         oracledb.init_oracle_client(lib_dir=config.lib_dir, config_dir=".")
         extra_connect_params["externalauth"] = True
     else:
-        print("Using oracledb Thin mode")
+        logger.debug("Connecting using oracledb Thin mode")
 
-    return oracledb.connect(
+    connection = oracledb.connect(
         dsn=dsn, extra_auth_params=token_based_auth, **extra_connect_params
     )
+    logger.info("Connected")
+    return connection
 
 
 def db_disconnect(connection: oracledb.Connection) -> None:
@@ -113,6 +117,7 @@ def build_subscriber_rule(
             )
             condition = f"tab.user_data.endpoint = {quoted_endpoint}"
             rule = f"{rule} and {condition}" if rule is not None else condition
+    logger.debug("Queue rule is: %s", rule)
     return rule
 
 
@@ -137,9 +142,8 @@ def subscribe(
             display_name=display_name,
             endpoint=endpoint,
         )
-    except Exception as err:
-        print(f"Exception occurred while building rule: {err}", file=sys.stderr)
-        traceback.print_exc()
+    except Exception as e:
+        logger.error("Exception occurred while building rule: %s", e)
         return None
 
     try:
@@ -160,12 +164,10 @@ def subscribe(
                     "delivery_mode": oracledb.MSG_PERSISTENT_OR_BUFFERED,
                 },
             )
-    except Exception as err:
-        print(
-            f"Exception occurred while registering subscriber: {err}", file=sys.stderr
-        )
-        traceback.print_exc()
+    except Exception as e:
+        logger.error("Cannot register subscriber: %s", e)
         return None
+    logger.info("Subscriber %s registered", subscriber.NAME)
     return subscriber
 
 
@@ -180,7 +182,7 @@ def stream(
         queue.deqOptions.navigation = oracledb.DEQ_NEXT_MSG
         queue.deqOptions.consumername = subscriber.NAME
 
-        print("Listening for messages")
+        logger.info("Listening for messages")
         while True:
             message: Optional[oracledb.aq.MessageProperties] = queue.deqone()
             if message:
@@ -195,8 +197,8 @@ def stream(
     except KeyboardInterrupt:
         print("\nInterrupted")
     except Exception as e:
-        print(f"\n--- An unexpected error occurred: {e} ---")
-        traceback.print_exc()
+        print()
+        logger.error("Error while dequeuing messages: %s", e)
 
 
 def unsubscribe(
@@ -211,11 +213,10 @@ def unsubscribe(
                     "subscriber": subscriber,
                 },
             )
-    except Exception as err:
-        print(
-            f"Exception occurred while unregistering subscriber: {err}", file=sys.stderr
-        )
-        traceback.print_exc()
+    except Exception as e:
+        logger.error("Cannot unregister subscriber: %s", e)
+        return
+    logger.info("Subscriber %s unregistered", subscriber.NAME)
 
 
 def parse_args():
@@ -230,6 +231,18 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(
         description="aq-sub: Subscribe to the raw messages stream from IoT Platform."
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose (INFO level) logging.",
+    )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        help="Enable debug (DEBUG level) logging.",
     )
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
@@ -249,7 +262,25 @@ def parse_args():
 
 def main():
     args = parse_args()
-    connection = db_connect()
+
+    log_level = logging.WARNING
+    if args.verbose:
+        log_level = logging.INFO
+    if args.debug:
+        log_level = logging.DEBUG
+        # Silence third party libraries
+        logging.getLogger("oci._vendor.urllib3.connectionpool").setLevel(logging.INFO)
+        logging.getLogger("oci.circuit_breaker").setLevel(logging.INFO)
+        logging.getLogger("oci.config").setLevel(logging.INFO)
+        logging.getLogger("oci.util").setLevel(logging.INFO)
+    logging.basicConfig(level=log_level, format=LOGGER_FMT, style="{")
+
+    try:
+        connection = db_connect()
+    except Exception as e:
+        logger.error("Database connection failed: %s", e)
+        return
+
     queue_name = f"{config.iot_domain_short_name}__iot.raw_data_in".upper()
     subscriber = subscribe(
         connection=connection,
@@ -261,7 +292,11 @@ def main():
     if subscriber:
         stream(connection=connection, queue_name=queue_name, subscriber=subscriber)
         unsubscribe(connection=connection, queue_name=queue_name, subscriber=subscriber)
-    db_disconnect(connection=connection)
+    try:
+        db_disconnect(connection=connection)
+        logger.info("Disconnected")
+    except Exception as e:
+        logger.warning("Failed to disconnect: %s", e)
 
 
 if __name__ == "__main__":
