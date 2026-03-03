@@ -549,11 +549,15 @@ def query_digital_twin(
             "Id",
             "Time received (UTC)",
             "Endpoint",
+            "Payload",
             title=f"Recent raw data - {len(raw_data)} record(s)",
         )
         for record in raw_data:
             table.add_row(
-                str(record["id"]), record["time_received"], record["endpoint"]
+                str(record["id"]),
+                record["time_received"],
+                record["endpoint"],
+                json.dumps(record.get("payload")),
             )
         console.print(table)
 

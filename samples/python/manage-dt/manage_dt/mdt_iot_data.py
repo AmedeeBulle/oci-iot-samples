@@ -192,6 +192,31 @@ def get_recent_data(
     return r.json()["items"]
 
 
+def get_raw_data_by_id(data_access: dict, raw_data_id: int) -> Optional[dict]:
+    """Query one raw data record by ID from the data API.
+
+    Args:
+        data_access (dict): Data access parameters.
+        raw_data_id (int): Raw data record identifier.
+
+    Returns:
+        Optional[dict]: Raw data record details, or None if the query fails.
+    """
+    r = requests.get(
+        url=f"{data_access['iot_data_endpoint']}/rawData/{raw_data_id}",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {data_access['token']}",
+        },
+    )
+    if r.status_code != requests.codes.ok:
+        logger.error("Unable to query raw data by ID (%s)", raw_data_id)
+        logger.error("  Status : %s", r.status_code)
+        logger.error("  Message: %s", r.text)
+        return None
+    return r.json()
+
+
 def get_recent_raw_data(
     data_access: dict, digital_twin_instance_id: str, last_minutes: int
 ) -> Optional[list]:
@@ -205,13 +230,26 @@ def get_recent_raw_data(
     Returns:
         Optional[list]: List of raw data or None.
     """
-    return get_recent_data(
+    raw_data = get_recent_data(
         data_access=data_access,
         last_minutes=last_minutes,
         digital_twin_instance_id=digital_twin_instance_id,
         endpoint="rawData",
         time_field="time_received",
     )
+    if raw_data is None:
+        return None
+
+    # rawData does not provide the payload, we need to iterate for each message Id
+    for record in raw_data:
+        record_details = get_raw_data_by_id(
+            data_access=data_access, raw_data_id=record["id"]
+        )
+        if not record_details:
+            record["payload"] = None
+            continue
+        record["payload"] = record_details.get("content")
+    return raw_data
 
 
 def get_recent_historized_data(
