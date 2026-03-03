@@ -14,7 +14,7 @@ import pathlib
 from typing import Optional
 
 from oci import exceptions as oci_exceptions, iot as oci_iot
-from rich.console import Console
+from rich.console import Console, Group
 from rich.panel import Panel
 from rich.pretty import Pretty
 from rich.table import Table
@@ -582,6 +582,47 @@ def query_digital_twin(
                 str(record["value"]),
             )
         console.print(table)
+
+    raw_command_data = mdt_iot_data.get_recent_raw_command_data(
+        data_access=data_access,
+        digital_twin_instance_id=digital_twin_instance_id,
+        last_minutes=last_minutes,
+    )
+    if raw_command_data is not None:
+        console.print(f"Recent raw command data - {len(raw_command_data)} record(s)")
+        for record in raw_command_data:
+            metadata_table = Table(
+                "Id",
+                "Request endpoint",
+                "Response endpoint",
+                "Time created (UTC)",
+                "Time updated (UTC)",
+                "Time finished (UTC)",
+                "Delivery status",
+            )
+            metadata_table.add_row(
+                str(record["id"]),
+                str(record.get("request_endpoint")),
+                str(record.get("response_endpoint")),
+                str(record.get("time_created")),
+                str(record.get("time_updated")),
+                str(record.get("time_finished")),
+                str(record.get("delivery_status")),
+            )
+            details_table = Table.grid(expand=True)
+            details_table.add_column(no_wrap=True, overflow="ellipsis")
+            details_table.add_row(
+                f"Request data: {json.dumps(record.get('request_data'))}"
+            )
+            details_table.add_row(
+                f"Response data: {json.dumps(record.get('response_data'))}"
+            )
+            console.print(
+                Panel(
+                    Group(metadata_table, details_table),
+                    title=f"Raw command data #{record['id']}",
+                )
+            )
 
     rejected_data = mdt_iot_data.get_recent_rejected_data(
         data_access=data_access,

@@ -148,6 +148,7 @@ def get_recent_data(
     digital_twin_instance_id: str,
     endpoint: str,
     time_field: str,
+    order_field: str = "id",
 ) -> Optional[list]:
     """Query recent data for a digital twin from the data API.
 
@@ -156,7 +157,9 @@ def get_recent_data(
         last_minutes (int): Minutes back to query.
         digital_twin_instance_id (str): Digital Twin instance ID.
         endpoint (str): Data endpoint.
-        time_field (str): Time field to filter (time_received or time_observed).
+        time_field (str): Time field to filter (for example time_received,
+            time_observed, or time_created).
+        order_field (str): Field name used for descending sort.
 
     Returns:
         Optional[list]: List of queried items or None.
@@ -169,7 +172,7 @@ def get_recent_data(
             {time_field: {"$gte": {"$date": recent_time_iso}}},
         ],
         "$orderby": {
-            "id": "desc",
+            order_field: "desc",
         },
     }
     r = requests.get(
@@ -272,6 +275,96 @@ def get_recent_historized_data(
         endpoint="historizedData",
         time_field="time_observed",
     )
+
+
+def get_recent_raw_command_data(
+    data_access: dict, digital_twin_instance_id: str, last_minutes: int
+) -> Optional[list]:
+    """Query recent raw command data for a digital twin.
+
+    Args:
+        data_access (dict): Data access parameters.
+        digital_twin_instance_id (str): Digital Twin instance ID.
+        last_minutes (int): Minutes back to query.
+
+    Returns:
+        Optional[list]: List of raw command data records or None.
+    """
+    raw_command_data = get_recent_data(
+        data_access=data_access,
+        last_minutes=last_minutes,
+        digital_twin_instance_id=digital_twin_instance_id,
+        endpoint="rawCommandData",
+        time_field="time_created",
+        order_field="time_created",
+    )
+    if raw_command_data is None:
+        return None
+
+    # rawCommandData list does not include request/response payloads.
+    # Query each record by id to retrieve full command details.
+    enriched_data = []
+    for record in raw_command_data:
+        record_id = record["id"]
+        record_details = get_raw_command_data_by_id(
+            data_access=data_access, raw_command_data_id=record_id
+        )
+        if not record_details:
+            enriched_data.append(
+                {
+                    "id": record_id,
+                    "request_endpoint": None,
+                    "request_data": None,
+                    "response_endpoint": None,
+                    "response_data": None,
+                    "time_created": record.get("time_created"),
+                    "time_updated": record.get("time_updated"),
+                    "time_finished": record.get("time_finished"),
+                    "delivery_status": record.get("delivery_status"),
+                }
+            )
+            continue
+        enriched_data.append(
+            {
+                "id": record_details.get("id", record_id),
+                "request_endpoint": record_details.get("request_endpoint"),
+                "request_data": record_details.get("request_data"),
+                "response_endpoint": record_details.get("response_endpoint"),
+                "response_data": record_details.get("response_data"),
+                "time_created": record_details.get("time_created"),
+                "time_updated": record_details.get("time_updated"),
+                "time_finished": record_details.get("time_finished"),
+                "delivery_status": record_details.get("delivery_status"),
+            }
+        )
+    return enriched_data
+
+
+def get_raw_command_data_by_id(
+    data_access: dict, raw_command_data_id: int
+) -> Optional[dict]:
+    """Query one raw command data record by ID from the data API.
+
+    Args:
+        data_access (dict): Data access parameters.
+        raw_command_data_id (int): Raw command data record identifier.
+
+    Returns:
+        Optional[dict]: Raw command data record details, or None if the query fails.
+    """
+    r = requests.get(
+        url=f"{data_access['iot_data_endpoint']}/rawCommandData/{raw_command_data_id}",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {data_access['token']}",
+        },
+    )
+    if r.status_code != requests.codes.ok:
+        logger.error("Unable to query raw command data by ID (%s)", raw_command_data_id)
+        logger.error("  Status : %s", r.status_code)
+        logger.error("  Message: %s", r.text)
+        return None
+    return r.json()
 
 
 def get_recent_rejected_data(
