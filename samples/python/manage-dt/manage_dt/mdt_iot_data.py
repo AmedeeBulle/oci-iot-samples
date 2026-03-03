@@ -167,7 +167,10 @@ def get_recent_data(
         "$and": [
             {"digital_twin_instance_id": digital_twin_instance_id},
             {time_field: {"$gte": {"$date": recent_time_iso}}},
-        ]
+        ],
+        "$orderby": {
+            "id": "desc",
+        },
     }
     r = requests.get(
         url=f"{data_access['iot_data_endpoint']}/{endpoint}",
