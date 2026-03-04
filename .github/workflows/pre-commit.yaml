@@ -69,7 +69,7 @@ jobs:
       - name: Install pre-commit-terraform dependencies
         env:
           TFLINT_VERSION: 'v0.59.1'
-          TRIVY_VERSION: '0.67.0'
+          TRIVY_VERSION: '0.69.3'
         shell: bash
         run: |
           echo "Installing tflint..."
