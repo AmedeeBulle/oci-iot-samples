@@ -1,6 +1,6 @@
 [
   {
-    "condition": "${endpoint(1) == \"iot\"}",
+    "condition": "${endpoint(3) == \"telemetry\"}",
     "description": "Environment data",
     "payloadMapping": {
       "$.count": "$.count",

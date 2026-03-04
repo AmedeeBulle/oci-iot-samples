@@ -2,7 +2,7 @@
   "envelopeMapping": {
     "timeObserved": "$.time"
   },
-  "referenceEndpoint": "iot/environ",
+  "referenceEndpoint": "iot/v1/telemetry",
   "referencePayload": {
     "data": {
       "count": 0,

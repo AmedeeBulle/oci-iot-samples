@@ -59,7 +59,7 @@ oci iot digital-twin-model create \
         "name": "pressure",
         "displayName":"Pressure",
         "schema" : "double",
-        "unit" : "millibar"
+        "unit" : "hectopascal"
       },
       {
         "@type": ["Telemetry"],
@@ -88,7 +88,7 @@ oci iot digital-twin-adapter create \
       "envelope-mapping": {
         "time-observed": "$.time"
       },
-      "reference-endpoint": "iot/environ",
+      "reference-endpoint": "iot/v1/telemetry",
       "reference-payload": {
         "data": {
           "count": 0,
@@ -103,7 +103,7 @@ oci iot digital-twin-adapter create \
     }' \
   --inbound-routes '[
       {
-        "condition": "${endpoint(1) == \"iot\"}",
+        "condition": "${endpoint(3) == \"telemetry\"}",
         "description": "Environment data",
         "payload-mapping": {
           "$.count": "$.count",
