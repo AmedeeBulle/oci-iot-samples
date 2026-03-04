@@ -33,7 +33,7 @@
       "name": "pressure",
       "displayName": "Pressure",
       "schema": "double",
-      "unit": "millibar"
+      "unit": "hectopascal"
     },
     {
       "@type": ["Telemetry"],

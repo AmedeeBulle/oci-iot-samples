@@ -11,8 +11,12 @@ Note that the OCI IoT Platform only supports MQTT Secure (MQTTS) on port 8883.
 
 The `command-response.py` script will establish an MQTT connection with the OCI IoT
 Platform and send telemetry data on a regular basis.
-It will listen for commands by subscribing to topics ending in `/cmd` and acknowledge
-by sending a response.
+It uses a configurable base endpoint and derives:
+
+- telemetry: `<iot_base_endpoint>/telemetry`
+- commands: `<iot_base_endpoint>/cmd/<key>`
+- responses: `<iot_base_endpoint>/rsp/<key>`
+
 The script will terminate when it receives a _shutdown_ command or a keyboard interrupt (Control-C).
 
 Notes:
@@ -67,7 +71,9 @@ The `time` field is optional, this can be specified in the configuration file (s
 Copy `config.distr.py` to `config.py` and set the following variables:
 
 - `iot_device_host`: The Device Host for your IoT Domain.
-- `iot_endpoint`: The  MQTT topic for your telemetry.
+- `iot_base_endpoint`: The MQTT base endpoint.
+  The script derives telemetry (`<base>/telemetry`), command
+  (`<base>/cmd/<key>`) and response (`<base>/rsp/<key>`) topics from this value.
 - `message_delay`: The delay in seconds between messages.
 - `client_id`: The client ID used for the MQTT connection (typically the name of your device).
 - `ca_certs`: The path to the CA certificate for the OCI IoT Platform.  
@@ -107,9 +113,9 @@ While the script is running, send raw commands using the OCI CLI -- e.g.:
 ```shell
 oci iot digital-twin-instance invoke-raw-json-command \
   --digital-twin-instance-id <DigitalTwin OCID> \
-  --request-endpoint "iot/v1/cmd" \
+  --request-endpoint "<iot_base_endpoint>/cmd/<key>" \
   --request-duration "PT10M" \
-  --response-endpoint "iot/v1/rsp" \
+  --response-endpoint "<iot_base_endpoint>/rsp/<key>" \
   --response-duration "PT10M" \
   --request-data '{
     "hello": "world"
@@ -129,13 +135,13 @@ Sending message #4
 Sending message #5
 Sending message #6
 Sending message #7
-Received command on iot/v1/cmd: {"hello":"world"}
-Sending ack to iot/v1/rsp: {"status": "acknowledged", "time": 1753456852150}
+Received command on iot/v1/cmd/pvhd-01: {"hello":"world"}
+Sending ack to iot/v1/rsp/pvhd-01: {"status": "acknowledged", "time": 1753456852150}
 Sending message #8
 Sending message #9
-Received command on iot/v1/cmd: {"shutdown":true}
+Received command on iot/v1/cmd/pvhd-01: {"shutdown":true}
 Shutdown command received. Preparing to exit...
-Sending ack to iot/v1/rsp: {"status": "acknowledged", "time": 1753456874872}
+Sending ack to iot/v1/rsp/pvhd-01: {"status": "acknowledged", "time": 1753456874872}
 Waiting 2 seconds to process possible /cmd messages...
 Terminated
 $

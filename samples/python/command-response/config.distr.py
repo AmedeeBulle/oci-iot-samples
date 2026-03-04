@@ -7,8 +7,12 @@
 #       --query 'data."device-host"' --raw-output
 iot_device_host = "<Device Host>"
 
-# The MQTT topic.
-iot_endpoint = "iot/v1/mqtt"
+# The MQTT base endpoint.
+# The script derives:
+#   telemetry: <iot_base_endpoint>/telemetry
+#   commands:  <iot_base_endpoint>/cmd/<key>
+#   responses: <iot_base_endpoint>/rsp/<key>
+iot_base_endpoint = "iot/v1"
 
 # Delay in seconds between messages.
 message_delay = 10

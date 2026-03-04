@@ -58,7 +58,7 @@ resource "terraform_data" "oci_identity_domains_setting_signing_cert_public_acce
 resource "oci_identity_domains_app" "this" {
   count = var.configure_ords_data_access && var.create_confidential_app ? 1 : 0
 
-  display_name  = "${local.org_name}-${var.app_id}-app"
+  display_name  = "${local.org_name}-${var.app_id}-app-${local.region_short_name}"
   idcs_endpoint = local.identity_domain_endpoint
   based_on_template {
     value         = "CustomWebAppTemplateId"

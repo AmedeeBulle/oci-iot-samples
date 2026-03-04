@@ -59,7 +59,7 @@ oci iot digital-twin-model create \
         "name": "pressure",
         "displayName":"Pressure",
         "schema" : "double",
-        "unit" : "millibar"
+        "unit" : "hectopascal"
       },
       {
         "@type": ["Telemetry"],

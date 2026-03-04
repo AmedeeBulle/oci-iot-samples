@@ -8,7 +8,7 @@
 iot_device_host = "<Device Host>"
 
 # The MQTT topic.
-iot_endpoint = "iot/v1/mqtt"
+iot_endpoint = "iot/v1/telemetry"
 
 # Number of messages to send and delay in seconds between messages.
 message_count = 10

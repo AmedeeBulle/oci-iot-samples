@@ -18,7 +18,7 @@ iot_device_host=$(oci iot domain get --iot-domain-id "${iot_domain_id}" \
 ```shell
 iot_device_host="your.device.host"
 # The IoT endpoint can be any value, similar to the MQTT topic.
-iot_endpoint="iot/v1/http"
+iot_endpoint="iot/v1/telemetry"
 # The username is the "externalKey" property of your Digital Twin.
 iot_device_user="your_device_username"
 # The Digital Twin password: this should be the content of the vault secret
@@ -60,7 +60,7 @@ To publish telemetry:
 ```shell
 iot_device_host="your.device.host"
 # The IoT endpoint can be any value, similar to the MQTT topic.
-iot_endpoint="iot/v1/http"
+iot_endpoint="iot/v1/telemetry"
 # Path to your client certificate and key.
 client_cert="client_certificate.pem"
 client_key="client_key.pem"
