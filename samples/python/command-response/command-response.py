@@ -26,6 +26,10 @@ import environmental_sensor_simulator
 import paho.mqtt.client as mqtt
 
 MQTT_PORT = 8883
+IOT_BASE_ENDPOINT = config.iot_base_endpoint.rstrip("/")
+TELEMETRY_TOPIC = f"{IOT_BASE_ENDPOINT}/telemetry"
+COMMAND_TOPIC_PREFIX = f"{IOT_BASE_ENDPOINT}/cmd/"
+RESPONSE_TOPIC_PREFIX = f"{IOT_BASE_ENDPOINT}/rsp/"
 
 
 # Get the current UTC time as an epoch value in microseconds.
@@ -36,8 +40,8 @@ def current_epoch_microseconds():
 # Callback for MQTT connection event.
 def on_connect(client, userdata, flags, reason_code, properties=None):
     print(f"Connected with result code {reason_code}")
-    # Subscribe to all topics ending with /cmd (using '#' and filtering in callback).
-    client.subscribe("#", qos=config.qos)
+    # Subscribe to all command topics: iot/v1/cmd/<key>
+    client.subscribe(f"{COMMAND_TOPIC_PREFIX}#", qos=config.qos)
 
 
 # Command handler thread
@@ -60,8 +64,9 @@ def command_handler():
             print("Shutdown command received. Preparing to exit...")
             state["shutdown_event"].set()  # Signal the telemetry loop to stop.
 
-        # Build corresponding /rsp topic
-        rsp_topic = topic[:-4] + "/rsp"
+        # Build corresponding response topic: iot/v1/rsp/<key>
+        command_key = topic[len(COMMAND_TOPIC_PREFIX) :]
+        rsp_topic = f"{RESPONSE_TOPIC_PREFIX}{command_key}"
         ack_msg = json.dumps(
             {"status": "acknowledged", "time": current_epoch_microseconds()}
         )
@@ -76,7 +81,7 @@ def on_message(client, userdata, message, properties=None):
     topic = message.topic
     payload = message.payload.decode()
     state = userdata
-    if topic.endswith("/cmd"):
+    if topic.startswith(COMMAND_TOPIC_PREFIX):
         command_handler_queue.put((topic, payload, state))
 
 
@@ -130,7 +135,7 @@ try:
     while not state["shutdown_event"].is_set():
         print(f"Sending message #{count}")
         rc_pub = client.publish(
-            topic=config.iot_endpoint,
+            topic=TELEMETRY_TOPIC,
             payload=json.dumps(telemetry.get_telemetry()),
             qos=config.qos,
         )
