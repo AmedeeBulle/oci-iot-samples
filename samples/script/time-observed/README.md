@@ -21,12 +21,15 @@ observed time; if not, it will default to the received time.
 
 ## Data format
 
-The `timeObserved` property is a POSIX time expressed in microseconds; that is: the
-number of microseconds that have elapsed since January 1, 1970 (midnight UTC/GMT), also
-known as Unix time or Epoch time.
+The `timeObserved` property supports two input formats in payload mappings:
+
+1. POSIX/Epoch time in microseconds (integer): number of microseconds elapsed since
+   January 1, 1970 00:00:00 UTC.
+2. UTC timestamp string with microseconds: `YYYY-MM-DDTHH:MM:SS.ffffffZ`.
 
 The following sample payload (from the [publish-mqtt](../../python/publish-mqtt/)
-example) will set the observed time to: Wednesday, September 10, 2025 13:47:05.226854 UTC:
+example) uses option 1 and sets the observed time to:
+Wednesday, September 10, 2025 13:47:05.226854 UTC:
 
 ```json
 {
@@ -39,20 +42,33 @@ example) will set the observed time to: Wednesday, September 10, 2025 13:47:05.2
 }
 ```
 
+The following payload uses option 2 with an RFC3339/ISO-8601 UTC string:
+
+```json
+{
+    "time": "2025-09-10T13:47:05.226854Z",
+    "sht_temperature": 23.8,
+    "qmp_temperature": 24.4,
+    "humidity": 56.1,
+    "pressure": 1012.2,
+    "count": 1,
+}
+```
+
 ## Conversion
 
-If the device sends a date string (e.g. in ISO-8601 format), it must be converted to the
-above format in the envelope mapping.
+If the device sends a date string in a different format, it must be converted in the
+envelope mapping.
 
 The IoT Platform mappings can be done with JsonPath or JQ expression. To facilitate the
 conversion of a date string to POSIX time format, the Platform provides an additional
 JQ function: `fromdateformat`
 
-To accept a payload in the following format:
+To accept a payload in a non-native format such as:
 
 ```json
 {
-    "iso_time": "2025-09-10T13:47:05.226854Z",
+    "iso_time": "2025/09/10 13:47:05.226854",
     "sht_temperature": 23.8,
     ...
 }
@@ -62,7 +78,7 @@ we can use the following envelope mapping:
 
 ```json
 "envelopeMapping": {
-    "timeObserved": "${.iso_time | fromdateformat(\"yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'\")}"
+    "timeObserved": "${.iso_time | fromdateformat(\"yyyy/MM/dd HH:mm:ss.SSSSSS\")}"
 }
 ```
 
