@@ -75,8 +75,8 @@ oci iot domain get --iot-domain-id "${iot_domain_id}" |
 
 ### Proxy into the IoT schema
 
-The default JDBC connect string using the IAM db-token connects you as a global schema. If you
-prefer to connect directly as `<DomainShortId>__IOT`, you can reuse your IAM
+The default JDBC connect string using the IAM db-token connects you as a global schema.
+If you prefer to connect directly as `<DomainShortId>__IOT`, you can reuse your IAM
 database token and instruct SQLcl to proxy into that schema:
 
 ```shell
