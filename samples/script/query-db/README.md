@@ -73,19 +73,19 @@ oci iot domain get --iot-domain-id "${iot_domain_id}" |
   jq -r '.data."device-host" | split(".")[0]'
 ```
 
-### Proxy into the IoT schema
+### Proxy into the workspace schema
 
 The default JDBC connect string using the IAM db-token connects you as a global schema.
-If you prefer to connect directly as `<DomainShortId>__IOT`, you can reuse your IAM
+If you prefer to connect directly as `<DomainShortId>__WKSP`, you can reuse your IAM
 database token and instruct SQLcl to proxy into that schema:
 
 ```shell
-sql "jdbc:oracle:thin:[<DomainShortId>__IOT]/@${iot_db_connect_string}&TOKEN_AUTH=OCI_TOKEN"
+sql "jdbc:oracle:thin:[<DomainShortId>__WKSP]/@${iot_db_connect_string}&TOKEN_AUTH=OCI_TOKEN"
 ```
 
 This keeps token authentication enabled while starting the Autonomous Database
-session as the IoT schema, so the sample telemetry queries run without changing
-`CURRENT_SCHEMA`.
+session as the workspace schema, so you can work in that schema context without
+changing `CURRENT_SCHEMA`.
 
 ## Sample SQL sessions
 
