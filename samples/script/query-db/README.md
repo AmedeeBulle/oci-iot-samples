@@ -52,7 +52,7 @@ found on the IoT Domain page in the OCI Console.
 - Your client VCN must be included in the Allow List defined at the IoT
   Domain Group level.
 - Database authentication is handled by
-  [OCI Identity Database Tokens](https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/iam-access-database.html#GUID-CFC74EAF-E887-4B1F-9E9A-C956BCA0BEA9).  
+  [OCI Identity Database Tokens][oci-iam-db-tokens].  
   To retrieve a valid token, the requester must be part of one of the identity
   groups listed at the IoT Domain level.
   The OCI IoT Platform supports *Instance Principal* authentication; that is,
@@ -151,6 +151,8 @@ where rd.digital_twin_instance_id = dt.data."_id"
   and rd.time_received > sysdate - 1/24/12
 order by rd.time_received;
 ```
+
+[oci-iam-db-tokens]: https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/iam-access-database.html#GUID-CFC74EAF-E887-4B1F-9E9A-C956BCA0BEA9
 
 Select historized messages observed in the last 5 minutes. The `value` column
 is of JSON type.
