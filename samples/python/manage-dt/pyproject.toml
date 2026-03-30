@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "manage_dt"
+version = "0.0.3"
+description = "Manage Digital Twins sample script"
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Libraries",
+  "Programming Language :: Python :: 3",
+  "Operating System :: POSIX :: Linux",
+]
+dependencies = [
+  "click~=8.2.0",
+  "oci~=2.0,>=2.161",
+  "PyYAML~=6.0.0",
+  "requests~=2.32.0",
+  "rich~=13.0.0",
+]
+
+[project.optional-dependencies]
+test = [
+  "black==26.3.1",
+  "ruff==0.15.8",
+]
+
+[project.scripts]
+manage-dt = "manage_dt.cli:cli"
+
+[tool.setuptools.packages.find]
+include = ["manage_dt*"]

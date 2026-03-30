@@ -12,11 +12,12 @@ Simple client to stream raw messages received by the IoT Platform.
 This example focus on the usage of the queues; for more information on
 database connection, see the "Direct database connection" example.
 """
+
 import argparse
 import logging
 import re
-from typing import Optional
 import uuid
+from typing import Optional
 
 import config
 import oracledb

@@ -14,6 +14,7 @@ and queries the telemetry tables.
 Relevant oracledb documentation:
 https://python-oracledb.readthedocs.io/en/latest/user_guide/connection_handling.html#oci-cloud-native-authentication-with-the-oci-tokens-plugin
 """
+
 import decimal
 import json
 import re

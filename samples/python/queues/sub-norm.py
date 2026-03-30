@@ -12,6 +12,7 @@ Simple client to stream normalized data received by the IoT Platform.
 This example focus on the usage of the queues; for more information on
 database connection, see the "Direct database connection" example.
 """
+
 import logging
 import re
 from typing import Optional
