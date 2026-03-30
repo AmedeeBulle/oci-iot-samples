@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       PYTHON_VERSION: '3.12'
-      NODE_VERSION: '22'
+      NODE_VERSION: '24'
       PRE_COMMIT_VERSION: '4.3.0'
       PRE_COMMIT_HOME: ${{ github.workspace }}/.cache/pre-commit
       LOCAL_BIN_DIR: ${{ github.workspace }}/.local/bin
@@ -31,13 +31,13 @@ jobs:
       ARCH: amd64
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # Fetch all history to ensure pre-commit can find merge-base
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -56,7 +56,7 @@ jobs:
           echo "${LOCAL_BIN_DIR}" >> "${GITHUB_PATH}"
 
       - name: Cache pre-commit environments
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.PRE_COMMIT_HOME }}
           key: >-
@@ -64,7 +64,7 @@ jobs:
             env.PRE_COMMIT_VERSION }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Cache downloaded CLI binaries
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.LOCAL_BIN_DIR }}
           key: >-
