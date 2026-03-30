@@ -18,6 +18,17 @@ on:
 jobs:
   pre-commit:
     runs-on: ubuntu-24.04
+    env:
+      PYTHON_VERSION: '3.12'
+      NODE_VERSION: '22'
+      PRE_COMMIT_VERSION: '4.3.0'
+      PRE_COMMIT_HOME: ${{ github.workspace }}/.cache/pre-commit
+      LOCAL_BIN_DIR: ${{ github.workspace }}/.local/bin
+      SHELLCHECK_VERSION: 'v0.11.0'
+      TERRAFORM_VERSION: '1.13.3'
+      TFLINT_VERSION: 'v0.59.1'
+      TRIVY_VERSION: '0.69.3'
+      ARCH: amd64
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,64 +39,91 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: .github/workflows/pre-commit.yaml
 
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: ${{ env.NODE_VERSION }}
 
-      - name: Add ~/.local/bin directory
+      - name: Add cache directories to PATH
         shell: bash
         run: |
-          mkdir --parents "${HOME}/.local/bin"
-          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+          mkdir --parents "${LOCAL_BIN_DIR}"
+          mkdir --parents "${PRE_COMMIT_HOME}"
+          echo "${LOCAL_BIN_DIR}" >> "${GITHUB_PATH}"
+
+      - name: Cache pre-commit environments
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PRE_COMMIT_HOME }}
+          key: >-
+            ${{ runner.os }}-pre-commit-${{ env.PYTHON_VERSION }}-${{
+            env.PRE_COMMIT_VERSION }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Cache downloaded CLI binaries
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.LOCAL_BIN_DIR }}
+          key: >-
+            ${{ runner.os }}-local-bin-${{ env.SHELLCHECK_VERSION }}-${{
+            env.TERRAFORM_VERSION }}-${{ env.TFLINT_VERSION }}-${{
+            env.TRIVY_VERSION }}
 
       - name: Install ShellCheck
         shell: bash
-        env:
-          SHELLCHECK_VERSION: 'v0.11.0'
         run: |
-          echo "Installing ShellCheck..."
-          curl --silent --location \
-              "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" |
-              tar --extract --xz --directory="${HOME}/.local/bin" \
-              --strip-components=1 "shellcheck-${SHELLCHECK_VERSION}/shellcheck"
+          if command -v shellcheck >/dev/null 2>&1; then
+            echo "Using cached ShellCheck"
+          else
+            echo "Installing ShellCheck..."
+            curl --silent --location \
+                "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" |
+                tar --extract --xz --directory="${LOCAL_BIN_DIR}" \
+                --strip-components=1 "shellcheck-${SHELLCHECK_VERSION}/shellcheck"
+          fi
           shellcheck --version
 
       - name: Set up Terraform
-        env:
-          TERRAFORM_VERSION: '1.13.3'
-          ARCH: amd64
         run: |
-          echo "Installing Terraform..."
-          OS=$(uname | tr '[:upper:]' '[:lower:]')
-          curl --silent --location --remote-name \
-              https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_${OS}_${ARCH}.zip
-          unzip terraform_${TERRAFORM_VERSION}_${OS}_${ARCH}.zip terraform
-          mv terraform "${HOME}/.local/bin"
+          if command -v terraform >/dev/null 2>&1; then
+            echo "Using cached Terraform"
+          else
+            echo "Installing Terraform..."
+            OS=$(uname | tr '[:upper:]' '[:lower:]')
+            curl --silent --location --remote-name \
+                https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_${OS}_${ARCH}.zip
+            unzip terraform_${TERRAFORM_VERSION}_${OS}_${ARCH}.zip terraform
+            mv terraform "${LOCAL_BIN_DIR}"
+          fi
           terraform version
 
       - name: Install pre-commit-terraform dependencies
-        env:
-          TFLINT_VERSION: 'v0.59.1'
-          TRIVY_VERSION: '0.69.3'
         shell: bash
         run: |
-          echo "Installing tflint..."
-          curl --silent --location \
-              https://github.com/terraform-linters/tflint/releases/download/${TFLINT_VERSION}/tflint_linux_amd64.zip > tflint.zip &&
-              unzip tflint.zip tflint -d "${HOME}/.local/bin" && rm tflint.zip
+          if command -v tflint >/dev/null 2>&1; then
+            echo "Using cached tflint"
+          else
+            echo "Installing tflint..."
+            curl --silent --location \
+                https://github.com/terraform-linters/tflint/releases/download/${TFLINT_VERSION}/tflint_linux_amd64.zip > tflint.zip &&
+                unzip tflint.zip tflint -d "${LOCAL_BIN_DIR}" && rm tflint.zip
+          fi
           tflint --version
-          echo "Installing trivy..."
-          curl --silent --location \
-              https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz |
-              tar -xz --directory="${HOME}/.local/bin" trivy
+
+          if command -v trivy >/dev/null 2>&1; then
+            echo "Using cached Trivy"
+          else
+            echo "Installing trivy..."
+            curl --silent --location \
+                https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz |
+                tar -xz --directory="${LOCAL_BIN_DIR}" trivy
+          fi
           trivy --version
 
       - name: Install pre-commit
-        env:
-          PRE_COMMIT_VERSION: '4.3.0'
         run: |
           pip install pre-commit==${PRE_COMMIT_VERSION}
           pre-commit --version
