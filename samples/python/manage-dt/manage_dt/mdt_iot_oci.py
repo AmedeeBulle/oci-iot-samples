@@ -8,12 +8,14 @@ https://oss.oracle.com/licenses/upl
 
 DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 """
+
 import json
 import logging
 import pathlib
 from typing import Optional
 
-from oci import exceptions as oci_exceptions, iot as oci_iot
+from oci import exceptions as oci_exceptions
+from oci import iot as oci_iot
 from rich.console import Console, Group
 from rich.panel import Panel
 from rich.pretty import Pretty

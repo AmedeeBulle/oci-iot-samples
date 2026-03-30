@@ -8,19 +8,20 @@ https://oss.oracle.com/licenses/upl
 
 DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 """
-from datetime import datetime, timedelta, timezone
+
 import json
 import logging
 import pathlib
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from oci import exceptions as oci_exceptions, iot as oci_iot
 import requests
 import requests.auth
+from oci import exceptions as oci_exceptions
+from oci import iot as oci_iot
 
 from . import mdt_constants
-
 
 logger = logging.getLogger(__name__)
 

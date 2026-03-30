@@ -8,6 +8,7 @@ https://oss.oracle.com/licenses/upl
 
 DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 """
+
 import logging
 import os
 from typing import Tuple
@@ -15,7 +16,6 @@ from typing import Tuple
 from oci import config as oci_config
 from oci import signer as oci_signer
 from oci.auth import signers as oci_auth_signers
-
 
 logger = logging.getLogger(__name__)
 

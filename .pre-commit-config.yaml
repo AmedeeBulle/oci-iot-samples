@@ -1,7 +1,7 @@
 #
 # Pre-commit configuration
 #
-# Copyright (c) 2025 Oracle and/or its affiliates.
+# Copyright (c) 2025, 2026 Oracle and/or its affiliates.
 # Licensed under the Universal Permissive License v 1.0 as shown at
 # https://oss.oracle.com/licenses/upl.
 #
@@ -31,16 +31,16 @@ repos:
           )
 
   - repo: https://github.com/psf/black
-    rev: 25.1.0
+    # See https://github.com/psf/black/issues/2493
+    # rev: 26.3.1
+    rev: 'refs/tags/26.3.1:refs/tags/26.3.1'
     hooks:
       - id: black
 
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.3.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.8
     hooks:
-      - id: flake8
-        additional_dependencies: [flake8-comprehensions, flake8-docstrings, flake8-import-order, pep8-naming, pydocstyle]
-        args: ["--ignore", "E501,D103,D100,W503,E203,E402", "--import-order-style", "google"]
+      - id: ruff-check
 
   - repo: https://github.com/jumanjihouse/pre-commit-hooks
     rev: 3.0.0

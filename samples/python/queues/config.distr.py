@@ -6,6 +6,7 @@ config.py, then edit values as needed.
 
 See in-file comments for details on each variable.
 """
+
 import os
 
 # Database connect string and token scope as provided by the OCI IoT Platform.

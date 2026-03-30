@@ -8,6 +8,7 @@ https://oss.oracle.com/licenses/upl
 
 DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 """
+
 import logging
 import os
 import pathlib
@@ -15,8 +16,9 @@ import string
 from typing import Any
 
 import click
-import manage_dt
 import yaml
+
+import manage_dt
 
 from . import mdt_constants, mdt_iot_oci, mdt_oci
 

@@ -10,8 +10,8 @@ https://oss.oracle.com/licenses/upl
 DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
 """
 
-from datetime import datetime, timezone
 import time
+from datetime import datetime, timezone
 
 import numpy as np
 
