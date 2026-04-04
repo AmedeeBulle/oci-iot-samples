@@ -49,18 +49,18 @@ as well as the messages received.
 
 ## How To
 
-| Description                                          | Command Line          | Python       |
-|------------------------------------------------------|:---------------------:|:------------:|
-| IoT from scratch (Setup IoT environment from command line) | [Sample](./samples/script/iot-from-scratch/) |              |
-| IoT from scratch (Setup IoT environment with Terraform   ) | [Terraform Sample](./samples/terraform/iot-from-scratch/) |              |
-| Manage Digital Twins (Create, query, delete). The Python sample demonstrates the use of the OCI Python SDK and the IoT Platform Data API           | [Sample](./samples/script/manage-dt/) | [Sample](./samples/python/manage-dt/) |
-| Publish telemetry (HTTPS - REST API)                 | [Sample](./samples/script/publish-https/) | [Sample](./samples/python/publish-https/)  |
-| Publish telemetry (MQTTS - Secure MQTT)              |                       | [Sample](./samples/python/publish-mqtt/)  |
-| Publish telemetry (WSS - Secure MQTT over WebSocket) |                       | [Sample](./samples/python/publish-websockets/)  |
-| Sending observed time in device payload              | [Sample](./samples/script/time-observed/) |              |
-| Raw command-response scenario                        |                       | [Sample](./samples/python/command-response/)  |
-| Direct database connection — query telemetry         | [Sample](./samples/script/query-db/) | [Sample](./samples/python/query-db/)  |
-| Streaming IoT Platform data (Database queues)        |                       | [Sample](./samples/python/queues/)  |
+| Description | Command Line | Python | Java |
+|-------------|:------------:|:------:|:----:|
+| IoT from scratch (Setup IoT environment from command line) | [Sample](./samples/script/iot-from-scratch/) |  |  |
+| IoT from scratch (Setup IoT environment with Terraform) | [Terraform Sample](./samples/terraform/iot-from-scratch/) |  |  |
+| Manage Digital Twins (Create, query, delete). The Python sample demonstrates the use of the OCI Python SDK and the IoT Platform Data API | [Sample](./samples/script/manage-dt/) | [Sample](./samples/python/manage-dt/) |  |
+| Publish telemetry (HTTPS - REST API) | [Sample](./samples/script/publish-https/) | [Sample](./samples/python/publish-https/) |  |
+| Publish telemetry (MQTTS - Secure MQTT) |  | [Sample](./samples/python/publish-mqtt/) |  |
+| Publish telemetry (WSS - Secure MQTT over WebSocket) |  | [Sample](./samples/python/publish-websockets/) |  |
+| Sending observed time in device payload | [Sample](./samples/script/time-observed/) |  |  |
+| Raw command-response scenario |  | [Sample](./samples/python/command-response/) |  |
+| Direct database connection - query telemetry | [Sample](./samples/script/query-db/) | [Sample](./samples/python/query-db/) |  |
+| Streaming IoT Platform data (Database queues) |  | [Sample](./samples/python/queues/) | [Sample](./samples/java/queues/) |
 
 ## Documentation
 
