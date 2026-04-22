@@ -1,0 +1,17 @@
+{
+  "envelope-mapping": {
+    "time-observed": "$.time"
+  },
+  "reference-endpoint": "iot/v1/telemetry",
+  "reference-payload": {
+    "data": {
+      "count": 0,
+      "humidity": 0.0,
+      "pressure": 0.0,
+      "qmp_temperature": 0.0,
+      "sht_temperature": 0.0,
+      "time": 0
+    },
+    "data-format": "JSON"
+  }
+}
