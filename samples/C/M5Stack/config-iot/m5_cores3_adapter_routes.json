@@ -1,0 +1,20 @@
+[
+  {
+    "condition": "${endpoint(3) == \"telemetry\"}",
+    "description": "Environment data",
+    "payload-mapping": {
+      "$.count": "$.count",
+      "$.humidity": "$.humidity",
+      "$.pressure": "$.pressure",
+      "$.qmp_temperature": "$.qmp_temperature",
+      "$.sht_temperature": "$.sht_temperature"
+    }
+  },
+  {
+    "condition": "*",
+    "description": "Default condition",
+    "payload-mapping": {
+      "$.system": "${.}"
+    }
+  }
+]

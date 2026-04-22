@@ -1,0 +1,57 @@
+CONFIG_IDF_TARGET="esp32s3"
+
+# --- CPU and Flash Settings ---
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+
+CONFIG_CODEC_I2C_BACKWARD_COMPATIBLE=n
+
+# --- PSRAM (Critical for Core S3) ---
+# Core S3 uses Quad PSRAM at 80MHz
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_QUAD=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_BOOT_INIT=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MEMTEST=y
+# Increase the default task stack size
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# --- Partitioning ---
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partition_table/partition_table.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partition_table/partition_table.csv"
+CONFIG_PARTITION_TABLE_MD5=y
+
+# --- Console output ---
+# Redirect all console output to the internal USB Serial/JTAG controller
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
+# Set the logging level (0: None, 1: Error, 2: Warn, 3: Info, 4: Debug, 5: Verbose)
+CONFIG_BOOTLOADER_LOG_COLORS=y
+CONFIG_BOOTLOADER_LOG_LEVEL_INFO=y
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# --- BSP ---
+# CONFIG_BSP_SELECT_M5STACK_CORE_S3=y
+# BSP - M5Stack Core S3 System bus is bus 0
+CONFIG_BSP_I2C_NUM=0
+
+# --- SD FAT ---
+# Support long file names on SD
+# Not strictly required if all file names are in FAT 8.3 format
+CONFIG_FATFS_LFN_HEAP=y
+
+# --- SNTP ---
+# Use DHCP provided SNTP server, falls back to pre-configured one
+CONFIG_LWIP_DHCP_GET_NTP_SRV=y
+CONFIG_LWIP_SNTP_MAX_SERVERS=2
+CONFIG_SNTP_TIME_SERVER="pool.ntp.org"
+
+# --- LVGL ---
+CONFIG_LV_BUILD_EXAMPLES=n
+
+# --- Application rollback (for OTA updates) ---
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y

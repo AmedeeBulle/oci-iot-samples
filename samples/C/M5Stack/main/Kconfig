@@ -1,0 +1,18 @@
+menu "OCI IoT Platform - M5Stack CoreS3 Custom Settings"
+
+    config FATFS_LONG_FILENAMES
+        bool "Enable BSP Long Filename Support"
+        # This line makes it automatically follow the official ESP-IDF setting
+        default y if !FATFS_LFN_NONE
+        default n if FATFS_LFN_NONE
+        help
+            This bridges the ESP-IDF FatFS settings to the BSP's
+            expected macro name.
+
+    config SNTP_TIME_SERVER
+        string "SNTP server name"
+        default "pool.ntp.org"
+        help
+            Hostname of the main SNTP server.
+
+endmenu

@@ -1,0 +1,35 @@
+# --- Config files ---
+oci-iot*.ini
+!oci-iot.distr.ini
+
+# --- Firmware ---
+*.bin
+
+# --- Certificates --
+*.pem
+!digicert*.pem
+
+# --- ESP-IDF Build Artifacts ---
+build/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+
+# --- Component Manager ---
+# We ignore managed_components because they are re-downloaded
+# based on the idf_component.yml manifest.
+managed_components/
+
+# --- Editor / OS Files ---
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.bak
+
+# --- Python / Environment ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/

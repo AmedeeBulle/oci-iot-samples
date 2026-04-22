@@ -1,0 +1,41 @@
+Language: Cpp
+# Based on Google's style, but adapted for ESP-IDF
+BasedOnStyle: Google
+
+# 1. Line Length and Indentation
+ColumnLimit: 120
+IndentWidth: 4
+ContinuationIndentWidth: 4
+UseTab: Never
+
+# 2. Braces and Alignment
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: false
+  AfterControlStatement: MultiLine # Braces stay on same line for simple if/else
+  AfterEnum: false
+  AfterFunction: true            # Functions get a new line for the brace (Classic C)
+  AfterStruct: false
+  BeforeElse: false
+  BeforeCatch: false
+
+# 3. Pointer Alignment (ESP-IDF style: int *ptr)
+PointerAlignment: Right
+
+# 4. Cleanup and Organization
+SortIncludes: true
+IncludeBlocks: Regroup
+# Specifically handle the FreeRTOS include order quirk
+IncludeCategories:
+  - Regex: '^"freertos/FreeRTOS\.h"'
+    Priority: -1
+  - Regex: '^"freertos/'
+    Priority: 1
+  - Regex: '^<.*\.h>'
+    Priority: 2
+  - Regex: '^".*\.h"'
+    Priority: 3
+
+# 5. Spacing
+SpaceAfterCStyleCast: true
+SpaceBeforeParens: ControlStatements
