@@ -96,10 +96,13 @@ esp_err_t start_https_ota(const char *url, const char *ca_cert)
     if (!url || url[0] == '\0') {
         return ESP_ERR_INVALID_ARG;
     }
+    if (!ca_cert || ca_cert[0] == '\0') {
+        ESP_LOGE(TAG, "OTA CA certificate missing");
+        return ESP_ERR_INVALID_ARG;
+    }
     esp_http_client_config_t http_config = {
         .url = url,
         .cert_pem = ca_cert,
-        .skip_cert_common_name_check = (ca_cert == NULL),
         .timeout_ms = 10000,
     };
     esp_https_ota_config_t ota_config = {

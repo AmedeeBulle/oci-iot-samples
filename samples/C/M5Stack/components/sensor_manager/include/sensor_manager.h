@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 #include "esp_err.h"
 
 typedef struct {
@@ -19,6 +21,8 @@ typedef struct {
     float humidity_percent;
     float qmp_temperature_c;
     float pressure_hpa;
+    bool sht_valid;
+    bool qmp_valid;
 } sensor_data_t;
 
 /**

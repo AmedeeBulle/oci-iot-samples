@@ -22,4 +22,4 @@ esp_err_t wifi_connect(const char *ssid, const char *password);
 /**
  * Wait until SNTP sync completes.
  */
-void wait_for_time_sync();
+esp_err_t wait_for_time_sync();

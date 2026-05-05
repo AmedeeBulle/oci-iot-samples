@@ -396,6 +396,10 @@ static esp_err_t copy_file_chunked(const char *src_path, const char *dst_path)
             break;
         }
     }
+    if (ret == ESP_OK && ferror(src)) {
+        ESP_LOGE(TAG, "Read error while copying %s", src_path);
+        ret = ESP_FAIL;
+    }
 
     free(buffer);
     fclose(src);
@@ -415,19 +419,30 @@ static esp_err_t get_file_sha256(const char *path, uint8_t output[32])
     FILE *f = fopen(path, "rb");
     if (!f) return ESP_FAIL;
 
+    esp_err_t ret = ESP_OK;
     mbedtls_sha256_context ctx;
     mbedtls_sha256_init(&ctx);
-    mbedtls_sha256_starts(&ctx, 0);  // 0 for SHA-256
+    if (mbedtls_sha256_starts(&ctx, 0) != 0) {  // 0 for SHA-256
+        ret = ESP_FAIL;
+        goto cleanup;
+    }
 
     uint8_t buf[512];
     size_t bytes_read;
     while ((bytes_read = fread(buf, 1, sizeof(buf), f)) > 0) {
-        mbedtls_sha256_update(&ctx, buf, bytes_read);
+        if (mbedtls_sha256_update(&ctx, buf, bytes_read) != 0) {
+            ret = ESP_FAIL;
+            goto cleanup;
+        }
     }
-    mbedtls_sha256_finish(&ctx, output);
+    if (ferror(f) || mbedtls_sha256_finish(&ctx, output) != 0) {
+        ret = ESP_FAIL;
+    }
+
+cleanup:
     mbedtls_sha256_free(&ctx);
     fclose(f);
-    return ESP_OK;
+    return ret;
 }
 
 /**
@@ -448,8 +463,8 @@ static esp_err_t needs_update(const char *sd_path, const char *spiffs_path)
 
     // 4. Content check (SHA-256)
     uint8_t hash_sd[32], hash_spiffs[32];
-    get_file_sha256(sd_path, hash_sd);
-    get_file_sha256(spiffs_path, hash_spiffs);
+    ESP_RETURN_ON_ERROR(get_file_sha256(sd_path, hash_sd), TAG, "Cannot hash SD file %s", sd_path);
+    ESP_RETURN_ON_ERROR(get_file_sha256(spiffs_path, hash_spiffs), TAG, "Cannot hash SPIFFS file %s", spiffs_path);
 
     return (memcmp(hash_sd, hash_spiffs, 32) == 0) ? ESP_OK : ESP_ERR_INVALID_VERSION;
 }
@@ -507,6 +522,8 @@ static esp_err_t load_certificate_to_psram(const char *sd_file, const char *spif
 
     ESP_RETURN_ON_FALSE(stat(spiffs_path, &st) == 0, ESP_ERR_NOT_FOUND, TAG, "Cannot open %s", spiffs_path);
 
+    ESP_RETURN_ON_FALSE(st.st_size > 0, ESP_ERR_INVALID_SIZE, TAG, "Empty certificate %s", spiffs_path);
+
     char *buffer = (char *) heap_caps_malloc(st.st_size + 1, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     ESP_RETURN_ON_FALSE(buffer, ESP_ERR_NO_MEM, TAG, "PSRAM allocation failed!");
 
@@ -516,6 +533,11 @@ static esp_err_t load_certificate_to_psram(const char *sd_file, const char *spif
         ESP_RETURN_ON_ERROR(ESP_ERR_NOT_FOUND, TAG, "Cannot open %s", spiffs_path);
     }
     size_t read_bytes = fread(buffer, 1, st.st_size, f);
+    if (read_bytes != (size_t) st.st_size || ferror(f)) {
+        fclose(f);
+        heap_caps_free(buffer);
+        return ESP_FAIL;
+    }
     buffer[read_bytes] = '\0';  // Null terminator for PEM strings
     *file_content = buffer;
     fclose(f);

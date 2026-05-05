@@ -107,12 +107,15 @@ esp_err_t env_sensors_read(sensor_data_t *sensor_data)
     ESP_RETURN_ON_FALSE(sensor_data != NULL, ESP_ERR_INVALID_ARG, TAG, "Null sensor_data");
     ESP_RETURN_ON_FALSE(sensors_context.initialized, ESP_ERR_INVALID_STATE, TAG, "Sensors not initialized");
 
+    memset(sensor_data, 0, sizeof(*sensor_data));
+
     if (sensors_context.sht_available) {
         float temperature, humidity;
         esp_err_t err = sht3x_measure(&sensors_context.sht_sensor, &temperature, &humidity);
         if (err == ESP_OK) {
             sensor_data->sht_temperature_c = temperature;
             sensor_data->humidity_percent = humidity;
+            sensor_data->sht_valid = true;
             ESP_LOGI(TAG, "ENV III - SHT3x:");
             ESP_LOGI(TAG, "  Temperature: %.2f °C", temperature);
             ESP_LOGI(TAG, "  Humidity:    %.2f %%", humidity);
@@ -129,6 +132,7 @@ esp_err_t env_sensors_read(sensor_data_t *sensor_data)
         if (err == ESP_OK) {
             sensor_data->qmp_temperature_c = sensors_context.qmp_sensor.temperature;
             sensor_data->pressure_hpa = pressure / 100.0f;
+            sensor_data->qmp_valid = true;
             ESP_LOGI(TAG, "ENV III - QMP6988:");
             ESP_LOGI(TAG, "  Temperature: %.2f °C", sensors_context.qmp_sensor.temperature);
             ESP_LOGI(TAG, "  Pressure:    %.2f hPa", pressure / 100.0f);
@@ -136,5 +140,5 @@ esp_err_t env_sensors_read(sensor_data_t *sensor_data)
             ESP_LOGW(TAG, "ENV III: Read failed for QMP6988 sensor: %s", esp_err_to_name(err));
         }
     }
-    return ESP_OK;
+    return (sensor_data->sht_valid || sensor_data->qmp_valid) ? ESP_OK : ESP_FAIL;
 }
