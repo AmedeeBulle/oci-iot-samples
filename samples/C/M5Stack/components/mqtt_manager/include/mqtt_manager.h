@@ -19,9 +19,12 @@
 #include "config_manager.h"
 #include "esp_err.h"
 
+#define MQTT_MANAGER_MAX_COMMAND_TOPIC_LEN (CONFIG_MGR_MAX_TOPIC_LEN + 64)
+#define MQTT_MANAGER_MAX_COMMAND_PAYLOAD_LEN 384
+
 typedef struct {
-    char topic[64];
-    char payload[256];
+    char topic[MQTT_MANAGER_MAX_COMMAND_TOPIC_LEN];
+    char payload[MQTT_MANAGER_MAX_COMMAND_PAYLOAD_LEN];
 } mqtt_msg_t;
 
 /**
@@ -37,4 +40,4 @@ esp_err_t publish_telemetry(const char *payload);
 /**
  * Publish a response message.
  */
-esp_err_t publish_response(const char *command_topic, const char *initial_payload, const char *status);
+esp_err_t publish_response(const char *command_topic, const char *command_name, const char *status);

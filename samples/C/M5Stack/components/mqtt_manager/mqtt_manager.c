@@ -14,6 +14,11 @@
 
 #include "mqtt_manager.h"
 
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "freertos/queue.h"
 
 #include "cJSON.h"
@@ -27,8 +32,6 @@
 #define MQTT_TOPIC_TELEMETRY "telemetry"
 #define MQTT_TOPIC_COMMAND "cmd"
 #define MQTT_TOPIC_RSP "rsp"
-
-#define PREVIEW_SIZE 64
 
 #define MQTT_CONNECTED_BIT BIT0
 
@@ -50,8 +53,19 @@ static mqtt_state_t mqtt_state = {
     .topic = "",
 };
 
+typedef struct {
+    mqtt_msg_t msg;
+    int total_len;
+    int received_len;
+    bool active;
+    bool dropping;
+} mqtt_command_assembly_t;
+
+static mqtt_command_assembly_t command_assembly = {0};
+
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
 static void build_topic(char *out, size_t len, const char *suffix);
+static void handle_mqtt_data(esp_mqtt_event_handle_t event);
 
 /**
  * Initialize and start the MQTT client.
@@ -64,10 +78,15 @@ esp_err_t start_mqtt_client(mqtt_config_t *mqtt_config, iot_certs_t *iot_certs, 
     mqtt_state.qos = mqtt_config->qos;
     mqtt_state.event_data_queue = event_data_queue;
 
+    bool use_tls = (mqtt_config->port == 8883);
+    if (use_tls && !iot_certs->mqtt_ca_cert) {
+        ESP_LOGE(TAG, "MQTT CA certificate missing for TLS connection");
+        return ESP_ERR_INVALID_STATE;
+    }
+
     mqtt_state.mqtt_event_group = xEventGroupCreate();
     ESP_RETURN_ON_FALSE(mqtt_state.mqtt_event_group != NULL, ESP_ERR_NO_MEM, TAG, "MQTT event group");
 
-    bool use_tls = (mqtt_config->port == 8883);
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker =
             {
@@ -82,11 +101,7 @@ esp_err_t start_mqtt_client(mqtt_config_t *mqtt_config, iot_certs_t *iot_certs, 
         }};
 
     if (use_tls) {
-        if (iot_certs->mqtt_ca_cert) {
-            mqtt_cfg.broker.verification.certificate = iot_certs->mqtt_ca_cert;
-        } else {
-            mqtt_cfg.broker.verification.skip_cert_common_name_check = true;
-        }
+        mqtt_cfg.broker.verification.certificate = iot_certs->mqtt_ca_cert;
     }
 
     if (mqtt_config->password[0] != '\0') {
@@ -134,26 +149,81 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             break;
         }
         case MQTT_EVENT_DATA:
-            if (mqtt_state.event_data_queue) {
-                mqtt_msg_t command_message;
-                size_t topic_len = event->topic_len < (int) sizeof(command_message.topic)
-                                       ? (size_t) event->topic_len
-                                       : sizeof(command_message.topic) - 1;
-                size_t payload_len = event->data_len < (int) sizeof(command_message.payload)
-                                         ? (size_t) event->data_len
-                                         : sizeof(command_message.payload) - 1;
-
-                memcpy(command_message.topic, event->topic, topic_len);
-                command_message.topic[topic_len] = '\0';
-                memcpy(command_message.payload, event->data, payload_len);
-                command_message.payload[payload_len] = '\0';
-                if (xQueueSend(mqtt_state.event_data_queue, &command_message, 0) != pdPASS) {
-                    ESP_LOGW("MQTT", "Queue full, message dropped!");
-                }
-            }
+            handle_mqtt_data(event);
             break;
         default:
             break;
+    }
+}
+
+/**
+ * Buffer MQTT command data until the full payload is available.
+ */
+static void handle_mqtt_data(esp_mqtt_event_handle_t event)
+{
+    if (!mqtt_state.event_data_queue || !event) {
+        return;
+    }
+
+    if (event->current_data_offset == 0) {
+        memset(&command_assembly, 0, sizeof(command_assembly));
+        if ((event->topic_len > 0 && !event->topic) || (event->data_len > 0 && !event->data)) {
+            ESP_LOGW(TAG, "Dropping MQTT command with missing event buffers");
+            return;
+        }
+        if (event->topic_len >= (int) sizeof(command_assembly.msg.topic) ||
+            event->total_data_len >= (int) sizeof(command_assembly.msg.payload)) {
+            ESP_LOGW(TAG, "Dropping oversized command: topic_len=%d payload_len=%d", event->topic_len,
+                     event->total_data_len);
+            command_assembly.dropping = true;
+            command_assembly.total_len = event->total_data_len;
+            return;
+        }
+
+        memcpy(command_assembly.msg.topic, event->topic, event->topic_len);
+        command_assembly.msg.topic[event->topic_len] = '\0';
+        command_assembly.total_len = event->total_data_len;
+        command_assembly.active = true;
+    } else if (command_assembly.dropping) {
+        if (event->current_data_offset + event->data_len >= command_assembly.total_len) {
+            memset(&command_assembly, 0, sizeof(command_assembly));
+        }
+        return;
+    } else if (!command_assembly.active) {
+        ESP_LOGW(TAG, "Dropping MQTT command fragment without initial chunk");
+        return;
+    }
+
+    if (event->data_len > 0 && !event->data) {
+        ESP_LOGW(TAG, "Dropping MQTT command fragment with missing data buffer");
+        memset(&command_assembly, 0, sizeof(command_assembly));
+        return;
+    }
+
+    if (event->current_data_offset < 0 || event->data_len < 0 ||
+        event->current_data_offset + event->data_len > command_assembly.total_len ||
+        event->current_data_offset + event->data_len >= (int) sizeof(command_assembly.msg.payload)) {
+        ESP_LOGW(TAG, "Dropping invalid MQTT command fragment: offset=%d len=%d total=%d",
+                 event->current_data_offset, event->data_len, command_assembly.total_len);
+        memset(&command_assembly, 0, sizeof(command_assembly));
+        return;
+    }
+
+    memcpy(command_assembly.msg.payload + event->current_data_offset, event->data, event->data_len);
+    command_assembly.received_len += event->data_len;
+
+    if (event->current_data_offset + event->data_len == command_assembly.total_len) {
+        command_assembly.msg.payload[command_assembly.total_len] = '\0';
+        if (command_assembly.received_len != command_assembly.total_len) {
+            ESP_LOGW(TAG, "Dropping incomplete MQTT command: received=%d total=%d", command_assembly.received_len,
+                     command_assembly.total_len);
+            memset(&command_assembly, 0, sizeof(command_assembly));
+            return;
+        }
+        if (xQueueSend(mqtt_state.event_data_queue, &command_assembly.msg, 0) != pdPASS) {
+            ESP_LOGW(TAG, "Queue full, command dropped");
+        }
+        memset(&command_assembly, 0, sizeof(command_assembly));
     }
 }
 
@@ -212,18 +282,18 @@ static esp_err_t publish_message(const char *topic_suffix, const char *payload)
 /**
  * Publish a response message.
  */
-esp_err_t publish_response(const char *command_topic, const char *initial_payload, const char *status)
+esp_err_t publish_response(const char *command_topic, const char *command_name, const char *status)
 {
-    if (!command_topic || !initial_payload || !status) {
+    if (!command_topic || !status) {
         return ESP_ERR_INVALID_ARG;
     }
-    char preview[PREVIEW_SIZE] = "";
-    strlcpy(preview, initial_payload, sizeof(preview));
 
     cJSON *root = cJSON_CreateObject();
     ESP_RETURN_ON_FALSE(root, ESP_ERR_NO_MEM, TAG, "cJSON_CreateObject()");
     cJSON_AddStringToObject(root, "status", status[0] == '\0' ? "rsp" : status);
-    cJSON_AddStringToObject(root, "original_payload", preview);
+    if (command_name && command_name[0] != '\0') {
+        cJSON_AddStringToObject(root, "command", command_name);
+    }
     char *payload = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
 

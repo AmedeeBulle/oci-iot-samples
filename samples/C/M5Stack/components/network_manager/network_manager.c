@@ -178,17 +178,27 @@ static void log_sntp_servers(void)
 /**
  * Wait until SNTP sync completes.
  */
-void wait_for_time_sync()
+esp_err_t wait_for_time_sync()
 {
     int retry = 0;
     const int retry_count = 15;
 
     esp_netif_sntp_start();
     log_sntp_servers();
-    while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && retry++ < retry_count) {
-        ESP_LOGI("TAG", "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+    sntp_sync_status_t sync_status = sntp_get_sync_status();
+    while (sync_status == SNTP_SYNC_STATUS_RESET && retry++ < retry_count) {
+        ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
         vTaskDelay(pdMS_TO_TICKS(2000));
+        sync_status = sntp_get_sync_status();
     }
+    if (sync_status == SNTP_SYNC_STATUS_RESET) {
+        ESP_LOGW(TAG, "SNTP time sync timed out");
+        return ESP_ERR_TIMEOUT;
+    }
+    if (sync_status == SNTP_SYNC_STATUS_IN_PROGRESS) {
+        ESP_LOGI(TAG, "SNTP time sync in progress");
+    }
+    return ESP_OK;
 }
 
 /**

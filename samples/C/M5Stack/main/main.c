@@ -64,8 +64,18 @@ static void show_sensor_data(const sensor_data_t *data)
     if (!data) {
         return;
     }
-    snprintf(buffer, sizeof(buffer), "SHT: %.1f°C\nQMP: %.1f°C\nHumidity: %.1f %%\nPressure: %.1f hPa",
-             data->sht_temperature_c, data->qmp_temperature_c, data->humidity_percent, data->pressure_hpa);
+    int offset = 0;
+    if (data->sht_valid) {
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "SHT: %.1f°C\nHumidity: %.1f %%",
+                           data->sht_temperature_c, data->humidity_percent);
+    }
+    if (data->qmp_valid && offset < (int) sizeof(buffer)) {
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%sQMP: %.1f°C\nPressure: %.1f hPa",
+                           offset > 0 ? "\n" : "", data->qmp_temperature_c, data->pressure_hpa);
+    }
+    if (offset == 0) {
+        strlcpy(buffer, "No sensor data", sizeof(buffer));
+    }
     show_data(buffer);
 }
 
@@ -83,10 +93,14 @@ static esp_err_t publish_sensor_data(const sensor_data_t *data)
     ESP_RETURN_ON_FALSE(root, ESP_ERR_NO_MEM, TAG, "cJSON_CreateObject()");
 
     cJSON_AddNumberToObject(root, "time", (double) timestamp);
-    cJSON_AddNumberToObject(root, "sht_temperature", data->sht_temperature_c);
-    cJSON_AddNumberToObject(root, "qmp_temperature", data->qmp_temperature_c);
-    cJSON_AddNumberToObject(root, "humidity", data->humidity_percent);
-    cJSON_AddNumberToObject(root, "pressure", data->pressure_hpa);
+    if (data->sht_valid) {
+        cJSON_AddNumberToObject(root, "sht_temperature", data->sht_temperature_c);
+        cJSON_AddNumberToObject(root, "humidity", data->humidity_percent);
+    }
+    if (data->qmp_valid) {
+        cJSON_AddNumberToObject(root, "qmp_temperature", data->qmp_temperature_c);
+        cJSON_AddNumberToObject(root, "pressure", data->pressure_hpa);
+    }
     cJSON_AddNumberToObject(root, "count", (double) publish_count);
 
     char *payload = cJSON_PrintUnformatted(root);
@@ -111,8 +125,8 @@ static void sensors_task(void *pvParameters)
     while (1) {
         sensor_data_t sensor_data;
         if (env_sensors_read(&sensor_data) == ESP_OK) {
-            ESP_LOGI(TAG, "SHT=%.2fC humidity=%.1f%% QMP=%.2fC pressure=%.2fhPa", sensor_data.sht_temperature_c,
-                     sensor_data.humidity_percent, sensor_data.qmp_temperature_c, sensor_data.pressure_hpa);
+            ESP_LOGI(TAG, "Sensor read complete: sht=%s qmp=%s", sensor_data.sht_valid ? "ok" : "missing",
+                     sensor_data.qmp_valid ? "ok" : "missing");
             show_sensor_data(&sensor_data);
             publish_sensor_data(&sensor_data);
         } else {
@@ -128,20 +142,27 @@ static void sensors_task(void *pvParameters)
 void mqtt_command_handler(void *pvParameters)
 {
     QueueHandle_t queue = (QueueHandle_t) pvParameters;
-    mqtt_msg_t command_msg;
+    mqtt_msg_t *command_msg = calloc(1, sizeof(*command_msg));
+    if (!command_msg) {
+        ESP_LOGE(TAG, "Unable to allocate MQTT command buffer");
+        vTaskDelete(NULL);
+        return;
+    }
     bool reboot = false;
 
     while (1) {
-        if (xQueueReceive(queue, &command_msg, portMAX_DELAY)) {
-            ESP_LOGI("WORKER", "Processing topic %s: %s", command_msg.topic, command_msg.payload);
+        if (xQueueReceive(queue, command_msg, portMAX_DELAY)) {
+            ESP_LOGI(TAG, "Processing command topic %s (%u bytes)", command_msg->topic,
+                     (unsigned) strlen(command_msg->payload));
 
-            cJSON *root = cJSON_Parse(command_msg.payload);
+            cJSON *root = cJSON_Parse(command_msg->payload);
             if (!root) {
                 ESP_LOGW(TAG, "Invalid command payload");
-                publish_response(command_msg.topic, command_msg.payload, "invalid_json");
+                publish_response(command_msg->topic, NULL, "invalid_json");
                 continue;
             }
             const cJSON *cmd = cJSON_GetObjectItemCaseSensitive(root, "cmd");
+            const char *command_name = (cJSON_IsString(cmd) && cmd->valuestring) ? cmd->valuestring : NULL;
             const char *status = "ignored";
             if (cJSON_IsString(cmd) && cmd->valuestring) {
                 if (!strcasecmp(cmd->valuestring, "ota")) {
@@ -150,6 +171,8 @@ void mqtt_command_handler(void *pvParameters)
 
                     if (!cJSON_IsString(url)) {
                         status = "missing_url";
+                    } else if (!cJSON_IsString(new_version)) {
+                        status = "missing_version";
                     } else if (cJSON_IsString(new_version)) {
                         const esp_app_desc_t *app_desc = esp_app_get_description();
 
@@ -174,7 +197,7 @@ void mqtt_command_handler(void *pvParameters)
 
                 // Add other commands handling here
             }
-            publish_response(command_msg.topic, command_msg.payload, status);
+            publish_response(command_msg->topic, command_name, status);
             cJSON_Delete(root);
             if (reboot) {
                 reboot_device();
@@ -265,9 +288,11 @@ void app_main(void)
     }
 
     show_status_message("Starting time sync");
-    wait_for_time_sync();
-
-    show_status_message("Time synced");
+    if (wait_for_time_sync() == ESP_OK) {
+        show_status_message("Time synced");
+    } else {
+        show_status_message("Time sync failed");
+    }
     vTaskDelay(pdMS_TO_TICKS(1000));
 
     if (env_sensors_init(s_iot_config.hardware.i2c_port) == ESP_OK) {

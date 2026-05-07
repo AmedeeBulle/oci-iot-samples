@@ -61,6 +61,10 @@ Only the `ota` command is implemented (see below), for any other command,
 the device will simply return an acknowledgment.
 
 A sample IoT model and adapter are provided in the [config-iot](./config-iot/) directory.
+The provided adapter files match the default base topic `iot/v1`. The device can use
+a different base MQTT topic, but the adapter envelope `reference-endpoint`, adapter
+route endpoint condition, command request endpoint, and command response endpoint must
+be updated to use the same topic structure.
 
 Create IoT model:
 
@@ -158,9 +162,10 @@ publish_freq = 60
 Certificates referenced in the configuration must be present on the SD card.
 On first boot, they are copied to SPIFFS.
 
-- `mqtt.ca_cert` is required for MQTTS (port 8883). If omitted, the client attempts an
-  insecure TLS connection.
+- `mqtt.ca_cert` is required for MQTTS (port 8883). If omitted, the MQTT client fails
+  closed and does not connect.
 - `ota.ca_cert` is optional. If not provided, it defaults to the MQTT CA certificate.
+  OTA updates require a CA certificate either way.
 
 ### Firmware updates
 
@@ -169,8 +174,9 @@ There are 3 possible options:
 1. **Corded:** Flash the firmware with the `idf.py` or `esptool` utilities.
 1. **SD card update:** If `oci-iot.bin` is present on the SD card at boot time,
    it is flashed, removed, and the device reboots.
-1. **OTA update:** Send an MQTT command with `cmd = ota` and a `url` to the firmware.
-   The device downloads and applies the update, then reboots (see below for details).
+1. **OTA update:** Send an MQTT command with `cmd = ota`, a `url` to the firmware, and
+   the firmware `version`. The device downloads and applies the update, then reboots
+   (see below for details).
 
 ### High level operational overview
 
@@ -223,8 +229,8 @@ Send a command to the device using the following payload:
 }
 ```
 
-The version field is only used by the device to skip the update if it is equal to the
-running version.
+The `version` field is required and must be the version of the firmware at `url`.
+The device skips the update when this value is equal to the running version.
 
 Sample command line to trigger the OTA update:
 
