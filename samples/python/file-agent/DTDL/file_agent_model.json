@@ -1,0 +1,37 @@
+{
+  "@context": [
+    "dtmi:dtdl:context;3",
+    "dtmi:dtdl:extension:historization;1"],
+  "@id": "dtmi:com:oracle:iot:fileagent;1",
+  "@type": "Interface",
+  "displayName": "File Agent Interface",
+  "contents": [
+    {
+      "@type": ["Telemetry", "Historized"],
+      "name": "commandDetails",
+      "displayName": "File Command Details",
+      "schema": {
+        "@type": "Object",
+        "fields": [
+          {
+            "name": "op",
+            "schema": "string",
+            "description": "The operation to perform, e.g., 'prepare-upload'."
+          },
+          {
+            "name": "id",
+            "schema": "string",
+            "description": "A unique identifier for the upload transaction."
+          },
+          {
+            "name": "data",
+            "description": "Operation related data.",
+            "schema": {
+              "@type": "Object"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

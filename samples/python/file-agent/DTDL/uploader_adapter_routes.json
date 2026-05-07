@@ -1,0 +1,26 @@
+[
+  {
+    "condition": "${endpoint(3) == \"file\" and endpoint(4) == \"cmd\"}",
+    "description": "File upload message",
+    "referencePayload": {
+      "data": {
+        "op": "prepare-upload",
+        "id": "unique-id",
+        "data": {
+          "ttl": 10
+        }
+      },
+      "dataFormat": "JSON"
+    },
+    "payloadMapping": {
+      "$.file.commandDetails": "${ {\"op\": .op, \"id\": .id, \"data\": .data } }"
+    }
+  },
+  {
+    "condition": "*",
+    "description": "Default condition",
+    "payloadMapping": {
+      "$.telemetry": "${.}"
+    }
+  }
+]

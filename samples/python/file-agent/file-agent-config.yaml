@@ -1,0 +1,39 @@
+#
+# file-agent configuration template.
+#
+# Copyright (c) 2026 Oracle and/or its affiliates.
+# Licensed under the Universal Permissive License v 1.0 as shown at
+# https://oss.oracle.com/licenses/upl.
+#
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
+#
+
+# cspell:disable
+oci:
+  auth_type: InstancePrincipal
+  # profile: null
+
+iot:
+  domain_id: "ocid1.iotdomain.oc1.<region>..."
+  subscriber_name: file_agent
+  digital_twin:
+    instance_id: null
+    display_name: null
+  # content_path: file.commandDetails
+  # response_endpoint: iot/v1/file/rsp
+
+object_storage:
+  namespace_name: "Object Storage namespace"
+  bucket_name: "Upload bucket"
+  # max_ttl_minutes: 60
+  # par_name_prefix: file-agent
+
+commands:
+  demo: /absolute/path/scripts/demo.sh
+
+# Optional Oracle Database local driver settings.
+# oracledb:
+#   thick_mode: false
+#   thick_mode_lib_dir: null
+
+# cspell:enable

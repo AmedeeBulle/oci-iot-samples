@@ -1,0 +1,65 @@
+#
+# file-agent Python package metadata.
+#
+# Copyright (c) 2026 Oracle and/or its affiliates.
+# Licensed under the Universal Permissive License v 1.0 as shown at
+# https://oss.oracle.com/licenses/upl.
+#
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
+#
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "file-agent"
+version = "0.1.0"
+description = "OCI IoT Platform file upload agent"
+requires-python = ">=3.12"
+dependencies = [
+  "click~=8.2.0",
+  "oci~=2.0,>=2.164",
+  "oracledb>=3.4.1",
+  "paho-mqtt>=2.1.0,<3",
+  "pydantic~=2.12.0",
+  "PyYAML~=6.0.0",
+]
+
+[project.optional-dependencies]
+test = [
+  "black",
+  "pytest",
+  "ruff",
+]
+
+[project.scripts]
+file-agent = "file_agent.cli:cli"
+file-agent-device-demo = "file_agent.device_demo:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["file_agent*"]
+
+[tool.black]
+line-length = 88
+required-version = "26.3.1"
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["C4", "D", "E", "F", "I", "N", "W"]
+ignore = ["D100", "D103", "D212", "E203", "E402", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["file_agent"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

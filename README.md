@@ -62,10 +62,16 @@ as well as the messages received.
 | Direct database connection — query telemetry         | [Sample](./samples/script/query-db/) | [Sample](./samples/python/query-db/)  |              |
 | Streaming IoT Platform data (Database queues)        |                       | [Sample](./samples/python/queues/)  |              |
 
-The [`M5Stack CoreS3`](./samples/C/M5Stack/) C sample shows how to connect a
-microcontroller device to the OCI IoT Platform over secure MQTT,
-publish environmental telemetry, handle command-response messages,
-and perform OTA firmware updates triggered through the IoT Platform.
+## End-to-End Samples
+
+- The [`M5Stack CoreS3`](./samples/C/M5Stack/) C sample shows how to connect a
+  microcontroller device to the OCI IoT Platform over secure MQTT,
+  publish environmental telemetry, handle command-response messages,
+  and perform OTA firmware updates triggered through the IoT Platform.
+- The [`File Upload Agent`](./samples/python/file-agent/) Python sample shows how
+  a device can request an upload over MQTT, have a backend agent consume IoT
+  Platform database queue messages, create short-lived Object Storage upload
+  URLs, send responses through raw commands, and run optional post-processing.
 
 ## Documentation
 
