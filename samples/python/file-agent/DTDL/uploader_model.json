@@ -1,0 +1,24 @@
+{
+  "@context": [
+    "dtmi:dtdl:context;3",
+    "dtmi:dtdl:extension:historization;1"
+  ],
+  "@id": "dtmi:com:oracle:iot:uploader;1",
+  "@type": "Interface",
+  "contents": [
+    {
+      "@type": ["Telemetry", "Historized"],
+      "name": "telemetry",
+      "displayName": "Telemetry data",
+      "schema": {
+        "@type": "Object"
+      }
+    },
+    {
+      "@type": "Component",
+      "name": "file",
+      "schema": "dtmi:com:oracle:iot:fileagent;1",
+      "displayName": "File upload Component"
+    }
+  ]
+}
